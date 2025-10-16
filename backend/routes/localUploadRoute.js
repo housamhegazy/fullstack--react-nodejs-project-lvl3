@@ -47,8 +47,9 @@ router.post(
 // // عشان نعرض الصور من فولدر uploads
 router.use("/uploads", express.static(path.join(__dirname, `../uploads`)));
 // API ترجع آخر صورة (مثلاً)
-router.get("/api/lastpic/:userId", (req, res) => {
+router.get("/api/lastpic/:userId", async (req, res) => {
   const userId = req.params.userId;
+  
   const uploadDir = path.join(uploadDirBase, userId);
   // لو العميل اول مره يدخل فالفولدر بيكون مااتعملش اصلا فالبتالي هايحصل خطأ لان الفانكشن بتجيب الصور مع فتح الصفحه لذلك لابد من انشاء الفولدر بشكل اوتوماتيك عند فتح الصفحه
   if (!fs.existsSync(uploadDir)) {
@@ -64,23 +65,23 @@ router.get("/api/lastpic/:userId", (req, res) => {
         name: f,
         time: fs.statSync(path.join(uploadDir, f)).mtime.getTime(),
       }))
-      .sort((a, b) => b.time - a.time)[0].name;
-
+      .sort((a, b) => b.time - a.time)[0].name; 
+    const url = `http://localhost:3000/uploads/${userId}/${latestFile}`
     res.json({
-      imageUrl: `http://localhost:3000/uploads/${userId}/${latestFile}`,
+      imageUrl: url,
     });
   });
 });
 
 // get images
-router.get("/api/allpic/:userId", (req, res) => {
+router.get("/api/allpic/:userId", async (req, res) => {
   const userId = req.params.userId;
   const uploadDir = path.join(uploadDirBase, userId);
   // لو العميل اول مره يدخل فالفولدر بيكون مااتعملش اصلا فالبتالي هايحصل خطأ لذلك لبد من انشاء الفولدر بشكل اوتوماتيك عند فتح الصفحه
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir);
   }
-  fs.readdir(uploadDir, (err, files) => {
+  fs.readdir(uploadDir, async (err, files) => {
     if (err) return res.status(500).json({ message: "خطأ في قراءة الملفات" });
     if (!files.length) return res.json({ images: [] });
 
@@ -99,7 +100,7 @@ router.delete("/api/deleteImage/:image/:userId", async (req, res) => {
 
   const uploadDir = path.join(uploadDirBase, userId);
   const filePath = path.join(uploadDir, image);
-  
+
   fs.access(filePath, fs.constants.F_OK, (err) => {
     if (err) {
       return res.status(404).json({ message: "❌ الصورة غير موجودة" });

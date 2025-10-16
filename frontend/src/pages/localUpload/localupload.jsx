@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useGetUserProfileQuery } from "../../Redux/userApi";
 import Swal from "sweetalert2";
 import LocalUploadData from "./localUploadData";
-
+// import { useState } from "react";
 const LocalUpload = () => {
   const navigate = useNavigate();
   const {
@@ -20,35 +20,80 @@ const LocalUpload = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // 📥 تحميل آخر صورة محفوظة عند فتح الصفحة
 
   const getLastImg = async () => {
-    await fetch(`http://localhost:3000/api/lastpic/${user._id}`, {
+    const userId = user._id
+    await fetch(`http://localhost:3000/api/lastpic/${userId}`, {
       method: "GET",
       credentials: "include",
     })
-      .then((res) => res.json())
+      .then( (res) => {
+        // 💡 1. التحقق من حالة الاستجابة أولاً
+        if (!res.ok) {
+          // إذا فشلت، نحاول قراءة JSON الخطأ (لو كان موجوداً)
+          try {
+            const errorData =  res
+              .json();
+            throw new Error(
+              errorData.message ||
+              `Failed to fetch last image with status: ${res.status}`
+            );
+          } catch {
+            throw new Error(
+              `Failed to fetch last image: HTTP Status ${res.status}`
+            );
+          }
+        }
+        return res.json();
+      })
       .then((data) => {
-        if (data.imageUrl) {
+        // 💡 2. التحقق من وجود البيانات قبل التحديث
+        if (data && data.imageUrl) {
           setPreview(`${data.imageUrl}`);
         }
       })
       .catch((err) => {
-        console.log(err + " error from get last image");
+        // 💡 3. استخدام console.error
+        console.error(err.message + " error from get last image");
       });
   };
 
   const getAllimgs = async () => {
     setLoading(true);
+    
     await fetch(`http://localhost:3000/api/allpic/${user._id}`, {
       method: "GET",
       credentials: "include",
     })
-      .then((res) => res.json())
-      .then((data) => setAllImgs(data.images))
-      .catch((error) => console.log(error + "error loading images"))
+      .then(async (res) => {
+        // 💡 1. التحقق من حالة الاستجابة أولاً
+        if (!res.ok) {
+          // إذا فشلت، نحاول قراءة JSON الخطأ (لو كان موجوداً)
+          try {
+            const errorData = await res
+              .json();
+            throw new Error(
+              errorData.message ||
+              `Failed to fetch all images with status: ${res.status}`
+            );
+          } catch {
+            throw new Error(
+              `Failed to fetch all images: HTTP Status ${res.status}`
+            );
+          }
+        }
+        return res.json();
+      })
+      .then((data) => {
+        // 💡 2. التحقق من وجود البيانات قبل التحديث
+        if (data && data.images) {
+          setAllImgs(data.images);
+        }
+      })
+      .catch((error) => console.error(error.message + " error loading images")) // 💡 3. استخدام console.error
       .finally(() => setLoading(false));
   };
+  // 📥 تحميل آخر صورة محفوظة عند فتح الصفحة
 
   useEffect(() => {
     if (!user && !userLoading) {
@@ -116,14 +161,15 @@ const LocalUpload = () => {
 
         if (!res.ok)
           throw new Error(data.message + "حدث خطأ" || "حدث خطأ أثناء الرفع");
-        await getAllimgs();
-        await getLastImg();
-
+        getLastImg();
+          getAllimgs();
         Swal.fire({
           title: "added!",
           text: "Your image has added successfully.",
           icon: "success",
         });
+
+         
       } catch (err) {
         console.error(err);
         setError(err.message + "error uploading image");
@@ -158,13 +204,14 @@ const LocalUpload = () => {
 
         if (!res.ok) throw new Error(data.message || "حدث خطأ أثناء الحذف");
         // تحديث الصور بعد الحذف
-        await getAllimgs();
-        await getLastImg();
+        
         Swal.fire({
           title: "Deleted!",
           text: "Your image has been deleted.",
           icon: "success",
         });
+          getLastImg(); 
+         getAllimgs();
       } catch (err) {
         alert(err.message);
       }
@@ -187,6 +234,7 @@ const LocalUpload = () => {
         loading,
       }}
     />
+
   );
 };
 

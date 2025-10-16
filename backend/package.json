@@ -26,6 +26,8 @@
     "express-session": "^1.18.2",
     "google-auth-library": "^10.3.0",
     "jsonwebtoken": "^9.0.2",
+    "livereload": "^0.10.3",
+    "method-override": "^3.0.0",
     "mongodb": "^6.20.0",
     "mongoose": "^8.18.2",
     "multer": "^2.0.2",
@@ -35,5 +37,8 @@
     "passport-facebook": "^3.0.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-twitter": "^1.0.4"
+  },
+  "devDependencies": {
+    "connect-livereload": "^0.6.1"
   }
 }

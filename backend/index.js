@@ -7,6 +7,7 @@ const passport = require("passport"); // إضافة passport
 const path = require("path");
 require("dotenv").config();
 require("./config/passport"); // استيراد إعداد passport
+const methodOverride = require("method-override");
 
 // استيراد مسارات وميدل ويرز (افترض وجود هذه الملفات في مشروعك)
 // <--- استيراد Middleware التحقق
@@ -76,12 +77,12 @@ app.use(passport.session());
 app.use("/register", registerRoute);
 app.use("/api/signin", signinRoute);
 app.use("/api/signout", signoutRoute);
-app.use("",isAuthenticated,localUpload)
 
 //google signin
 app.use("", authRoute);
 app.use("/api/forgot-password", forgotPasswordRoute); // <--- إضافة هذا
 app.use("/api/reset-password", resetPasswordRoute); // <--- إضافة هذا
+app.use("",isAuthenticated,localUpload)
 app.use('/api/users',  isAuthenticated, updateUserRoute); 
 
 app.use("/api/profile", isAuthenticated, getUserRoute);
@@ -90,6 +91,22 @@ app.use("", isAuthenticated, addCustomerRoute);
 app.use("",isAuthenticated,cloudUploadRoute)
 
 // ********************** الاتصال بـ MongoDB **********************
+
+app.use(methodOverride("_method"));
+
+//auto refresh
+const livereload = require("livereload"); // استيراد وحدة livereload
+const liveReloadServer = livereload.createServer(); // إنشاء سيرفر LiveReload
+
+liveReloadServer.watch(path.join(__dirname, "public"));
+const connectLivereload = require("connect-livereload"); // استيراد Middleware
+app.use(connectLivereload());
+liveReloadServer.server.once("connection", () => {
+  setTimeout(() => {
+    liveReloadServer.refresh("/");
+  }, 100);
+});
+//end livereload
 mongoose
   .connect(
     "mongodb+srv://geohousam_db_user:UAc4KjEnIs8qVEEJ@addcustomercluster.xoewuxa.mongodb.net/all-data?retryWrites=true&w=majority&appName=addcustomercluster",

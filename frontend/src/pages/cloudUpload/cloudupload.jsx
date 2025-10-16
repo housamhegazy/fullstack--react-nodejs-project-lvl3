@@ -72,7 +72,7 @@ const CloudinarUploud = () => {
     formData.append("myfile", selectedFile);
     setLoading(true);
     //ارسالها للباك اند
-
+    
     const result = await Swal.fire({
       title: "Are you sure?",
       text: "You won't be able to revert this!",
@@ -85,15 +85,16 @@ const CloudinarUploud = () => {
 
     if (result.isConfirmed) {
       try {
-        const res = await fetch("http://localhost:3000/api/uploadpic", {
-          method: "POST",
+        const res = await fetch("http://localhost:3000/api/cloudupload/add", {
           body: formData,
+          method:"POST",
+          credentials:"include"
         });
         const data = await res.json();
 
         if (!res.ok)
           throw new Error(data.message + "حدث خطأ" || "حدث خطأ أثناء الرفع");
-
+        
         Swal.fire({
           title: "added!",
           text: "Your image has added successfully.",
