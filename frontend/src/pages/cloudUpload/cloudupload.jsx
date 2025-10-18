@@ -69,7 +69,7 @@ const CloudinarUploud = () => {
     //تخزين داتا الفورم
     const formData = new FormData();
     formData.append("userId", user._id);
-    formData.append("myfile", selectedFile);
+    formData.append("image", selectedFile);
     setLoading(true);
     //ارسالها للباك اند
     
@@ -85,13 +85,13 @@ const CloudinarUploud = () => {
 
     if (result.isConfirmed) {
       try {
-        const res = await fetch("http://localhost:3000/api/cloudupload/add", {
+        const res = await fetch(`http://localhost:3000/api/cloudupload/add`, {
           body: formData,
           method:"POST",
-          credentials:"include"
+          credentials: "include",
         });
-        const data = await res.json();
-
+        const data = await res.json(); // image link in cloudinary 
+        console.log(data)
         if (!res.ok)
           throw new Error(data.message + "حدث خطأ" || "حدث خطأ أثناء الرفع");
         
@@ -102,7 +102,7 @@ const CloudinarUploud = () => {
         });
       } catch (err) {
         console.error(err);
-        setError(err.message + "error uploading image");
+        setError(err.message + " error uploading image");
       } finally {
         setLoading(false);
         setSelectedFile(null);
