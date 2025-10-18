@@ -27,12 +27,35 @@ const CloudinarUploud = () => {
     isError,
   } = useGetUserProfileQuery(); // Fetch current user
   const [selectedFile, setSelectedFile] = useState(null);
-  const [isLoaded, setIsLoaded] = useState(false);
   const [preview, setPreview] = useState(null);
   const [allImgs, setAllImgs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
   //======================================= FETCHING PAGE DATA =================================================
+
+  const getImages = async () => {
+    try {
+      const result = await fetch(
+        `http://localhost:3000/api/allimages/${user && user._id}`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+      const alldata = await result.json();
+      if (alldata.images && Array.isArray(alldata.images)) {
+        setAllImgs(alldata.images);
+      } else {
+        // تعامل مع الحالة التي يكون فيها الرد غير متوقع
+        setAllImgs([]);
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err.message + " error uploading image");
+    }
+  };
+
   useEffect(() => {
     if (!user && !userLoading) {
       navigate("/signin", { replace: true });
@@ -43,10 +66,10 @@ const CloudinarUploud = () => {
       return;
     }
     if (user) {
-      console.log(user);
+      getImages();
     }
   }, [navigate, user, userLoading]);
-  //=====================================ADD PHOTO TO STATE ================================================
+  //===================================== ADD PHOTO TO STATE ================================================
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     setSelectedFile(file);
@@ -72,7 +95,7 @@ const CloudinarUploud = () => {
     formData.append("image", selectedFile);
     setLoading(true);
     //ارسالها للباك اند
-    
+
     const result = await Swal.fire({
       title: "Are you sure?",
       text: "You won't be able to revert this!",
@@ -87,14 +110,13 @@ const CloudinarUploud = () => {
       try {
         const res = await fetch(`http://localhost:3000/api/cloudupload/add`, {
           body: formData,
-          method:"POST",
+          method: "POST",
           credentials: "include",
         });
-        const data = await res.json(); // image link in cloudinary 
-        console.log(data)
+        const data = await res.json(); // image link in cloudinary
         if (!res.ok)
           throw new Error(data.message + "حدث خطأ" || "حدث خطأ أثناء الرفع");
-        
+        getImages();
         Swal.fire({
           title: "added!",
           text: "Your image has added successfully.",
@@ -164,7 +186,14 @@ const CloudinarUploud = () => {
         {preview && (
           <Box sx={{ mt: 2, textAlign: "center" }}>
             {loading ? (
-              "loading"
+              <Skeleton
+                variant="circular" // شكل دائري ليناسب Avatar
+                sx={{
+                  width: 100,
+                  height: 100,
+                  mx: "auto", // توسيط
+                }}
+              />
             ) : (
               <Avatar
                 src={preview}
@@ -212,29 +241,18 @@ const CloudinarUploud = () => {
         {allImgs &&
           allImgs.map((img) => {
             return (
-              <Box key={img}>
+              <Box key={img.public_id}>
                 <ImageListItem>
-                  {/* 1. السكلتون يظهر فقط إذا لم يتم التحميل */}
-                  {!isLoaded && (
-                    <Skeleton
-                      variant="rectangular"
-                      width="100%"
-                      height={200}
-                      sx={{ position: "absolute", top: 0, left: 0 }}
-                    />
-                  )}
-
                   <img
-                    srcSet={`${img}?w=164&h=164&fit=crop&auto=format&dpr=2 2x`}
-                    src={img}
+                    srcSet={`${img.imageUrl}?w=164&h=164&fit=crop&auto=format&dpr=2 2x`}
+                    src={img.imageUrl}
                     alt={""}
                     loading="lazy"
                     style={{
                       maxHeight: "200px",
-                      display: isLoaded ? "block" : "none",
                     }}
                     width={"cover"}
-                    onLoad={() => setIsLoaded(true)} // تحديث الحالة عند اكتمال التحميل
+                    // onLoad={() => setIsLoaded(true)} // تحديث الحالة عند اكتمال التحميل
                   />
                 </ImageListItem>
                 <Box

@@ -4,8 +4,21 @@ const router = express.Router();
 const multer = require("multer");
 require("dotenv").config();
 const cloudinary = require("cloudinary").v2;
-//======================  استيراد نموذج قاعدة البيانات) ========================
-// const Image = require("../models/ImageModel"); // *يجب استبدال هذا بالمسار الصحيح لنموذجك*
+const ImageModel = require("../models/galleryModel");
+
+// ********************** تعريف دالة handleError هنا **********************
+const handleError = (res, error) => {
+  console.error("API Error:", error); // تسجيل الخطأ في الـ console لـ debugging
+  res.status(500).json({
+    message: "An internal server error occurred.",
+    error: error.message,
+  });
+};
+
+//=======================================================================================
+//=====================(1) store image in cloudinary and send data to mongo db ==========
+//=======================================================================================
+
 //====================== cloudinary config ================================================
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME, // اسم السحابة الخاص بك
@@ -47,17 +60,34 @@ router.post(
     }
     try {
       const userId = req.body.userId; // رفعها لـ Cloudinary باستخدام Stream
+
+      // تأكد من وجود userId قبل استخدامها
+      if (!userId) {
+        return res
+          .status(400)
+          .json({ message: "معرف المستخدم (userId) مطلوب." });
+      }
+      //============================= store image in cloudinary =================================
       const uniquePublicId = `${userId}-${Date.now()}`;
       const result = await streamUpload(req.file.buffer, {
         folder: "mernstack/gallery", // sort folders in cloudinary
-        // public_id: userId, //  هذا هو اسم الصوره ويضمن عند رفع صوره يقوم بحذف القديمه ومن الممكن تغييره الى دالة الوقت لرفع كل صوره باسم مختلف والاحتفاظ بكل الصور 
-         public_id: uniquePublicId,
-        upload_preset: "gallery_preset", // cloudinary settings لازم تكتب نفس الاسم ده في الكلاوديناري 
-      }); 
+        // public_id: userId, //  هذا هو اسم الصوره ويضمن عند رفع صوره يقوم بحذف القديمه ومن الممكن تغييره الى دالة الوقت لرفع كل صوره باسم مختلف والاحتفاظ بكل الصور
+        public_id: uniquePublicId,
+        upload_preset: "gallery_preset", // cloudinary settings لازم تكتب نفس الاسم ده في الكلاوديناري
+      });
+
+      //=========================== send data in mongoo database ===============================
+      const newImage = new ImageModel({
+        owner: userId,
+        imageUrl: result.secure_url, // الرابط الذي سنستخدمه للعرض
+        public_id: result.public_id, // مفيد لعمليات الحذف أو التحديث
+      });
+      await newImage.save();
       res.json({
         message: "✅ تم رفع الصورة بنجاح (مباشر)",
-        imageUrl: result.secure_url, // // image link in cloudinary 
-        userId,
+        imageUrl: result.secure_url, // // image link in cloudinary
+        owner: userId,
+        publicId: result.public_id,
       });
     } catch (err) {
       console.error("Cloudinary Upload Error:", err);
@@ -69,11 +99,27 @@ router.post(
 );
 
 //=====================================================================================================
-//================================ get images from cloudinary =========================================
+//================================ get images from mongoo db =========================================
 //=====================================================================================================
 
-// router.get("/api/allImages",async(req,res)=>{
+router.get("/api/allImages/:userId", async (req, res) => {
+  try {
+    const userImages = await ImageModel.find({ owner: req.params.userId }).sort({ createdAt: -1 }); // Fetch all users
 
-// })
+    if (userImages.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "لم يتم العثور على صور لهذا المستخدم." });
+    }
+    res
+      .status(200)
+      .json({
+        message: "✅ تم استرجاع الصور بنجاح من Cloudinary (مباشر)",
+        images: userImages,
+      }); // 200 OK
+  } catch (error) {
+    handleError(res, error);
+  }
+});
 
 module.exports = router;
