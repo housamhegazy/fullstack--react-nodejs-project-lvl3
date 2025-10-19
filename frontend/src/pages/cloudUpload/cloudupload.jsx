@@ -135,7 +135,7 @@ const CloudinarUploud = () => {
 
   //============================ Delete image =====================================
   const handleDelete = async (publicId, owner) => {
-    const encodedPublicId = encodeURIComponent(publicId);
+    const encodedPublicId = encodeURIComponent(publicId);  // تشفير المسار حتى يستطيع الباك اند قرائته
     try {
       const response = await fetch(
         `http://localhost:3000/api/allImages/delete/${encodedPublicId}/${
