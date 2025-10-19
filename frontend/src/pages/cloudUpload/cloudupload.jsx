@@ -46,6 +46,7 @@ const CloudinarUploud = () => {
       const alldata = await result.json();
       if (alldata.images && Array.isArray(alldata.images)) {
         setAllImgs(alldata.images);
+        console.log(alldata.message);
       } else {
         // تعامل مع الحالة التي يكون فيها الرد غير متوقع
         setAllImgs([]);
@@ -129,6 +130,33 @@ const CloudinarUploud = () => {
         setLoading(false);
         setSelectedFile(null);
       }
+    }
+  };
+
+  //============================ Delete image =====================================
+  const handleDelete = async (publicId, owner) => {
+    const encodedPublicId = encodeURIComponent(publicId);
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/allImages/delete/${encodedPublicId}/${
+          user && owner
+        }`,
+        {
+          method: "delete",
+          credentials: "include",
+        }
+      );
+      if (response.ok) {
+        // ✅ استدعاء دالة جلب الصور لتحديث الـ state
+        await getImages();
+        Swal.fire("Deleted!", "تم حذف الصورة بنجاح.", "success");
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "فشل الحذف.");
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err.message + " error deleting image image");
     }
   };
 
@@ -266,8 +294,11 @@ const CloudinarUploud = () => {
                   }}
                 >
                   <IconButton
-                    onClick={() => {
-                      // handledelete(img.split("/").pop());
+                    onClick={ async() => {
+                      const publicId = await img.public_id;
+                      const owner = img.owner
+                      console.log(publicId,owner)
+                      handleDelete(publicId,owner);
                     }}
                     color="error"
                   >

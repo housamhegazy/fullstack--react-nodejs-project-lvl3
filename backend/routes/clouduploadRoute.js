@@ -70,7 +70,7 @@ router.post(
       //============================= store image in cloudinary =================================
       const uniquePublicId = `${userId}-${Date.now()}`;
       const result = await streamUpload(req.file.buffer, {
-        folder: "mernstack/gallery", // sort folders in cloudinary
+        folder: `mernstack/gallery/${userId}`, // sort folders in cloudinary based on userId
         // public_id: userId, //  هذا هو اسم الصوره ويضمن عند رفع صوره يقوم بحذف القديمه ومن الممكن تغييره الى دالة الوقت لرفع كل صوره باسم مختلف والاحتفاظ بكل الصور
         public_id: uniquePublicId,
         upload_preset: "gallery_preset", // cloudinary settings لازم تكتب نفس الاسم ده في الكلاوديناري
@@ -99,27 +99,52 @@ router.post(
 );
 
 //=====================================================================================================
-//================================ get images from mongoo db =========================================
+//================================ (2) get images from mongoo db =========================================
 //=====================================================================================================
 
 router.get("/api/allImages/:userId", async (req, res) => {
   try {
-    const userImages = await ImageModel.find({ owner: req.params.userId }).sort({ createdAt: -1 }); // Fetch all users
+    const userImages = await ImageModel.find({ owner: req.params.userId }).sort(
+      { createdAt: -1 }
+    ); // Fetch all images
 
     if (userImages.length === 0) {
       return res
         .status(404)
         .json({ message: "لم يتم العثور على صور لهذا المستخدم." });
     }
-    res
-      .status(200)
-      .json({
-        message: "✅ تم استرجاع الصور بنجاح من Cloudinary (مباشر)",
-        images: userImages,
-      }); // 200 OK
+    res.status(200).json({
+      message: "✅ تم استرجاع الصور بنجاح من Cloudinary (مباشر)",
+      images: userImages,
+    }); // 200 OK
   } catch (error) {
     handleError(res, error);
   }
 });
+//=====================================================================================================
+//================================ (3) delete images from mongoo db and cloudinary store ==============
+//=====================================================================================================
+router.delete("/api/allImages/delete/:publicId/:owner", async (req, res) => {
+  const owner = req.params.owner; // (user._id)
+  const publicId = req.params.publicId; // (publicId)
+  console.log("public id and owner", publicId, owner);
+  try {
+    const deletedImage = await ImageModel.findOneAndDelete({
+      public_id: publicId,
+      owner: owner,
+    });
 
+    if (!deletedImage) {
+      return res.status(404).json({ message: "لم يتم العثور على الصورة." });
+    }
+    // 2. ✅ الحذف من Cloudinary
+    const cloudinaryResponse = await cloudinary.uploader.destroy(publicId);
+    res.status(200).json({
+      message: "تم حذف الصورة من Cloudinary وقاعدة البيانات بنجاح.",
+      cloudinaryResult: cloudinaryResponse.result,
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+});
 module.exports = router;
